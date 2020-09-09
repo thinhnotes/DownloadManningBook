@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30404.54
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DownloadManningBook", "DownloadManningBook\DownloadManningBook.csproj", "{7CDCF47D-8643-45E9-A2C0-ECB5569F8882}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "THttpWebRequest", "THttpWebRequest\THttpWebRequest.csproj", "{90707037-2624-48BF-A886-4C161D951C86}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{7CDCF47D-8643-45E9-A2C0-ECB5569F8882}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7CDCF47D-8643-45E9-A2C0-ECB5569F8882}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7CDCF47D-8643-45E9-A2C0-ECB5569F8882}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7CDCF47D-8643-45E9-A2C0-ECB5569F8882}.Release|Any CPU.Build.0 = Release|Any CPU
+		{90707037-2624-48BF-A886-4C161D951C86}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{90707037-2624-48BF-A886-4C161D951C86}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{90707037-2624-48BF-A886-4C161D951C86}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{90707037-2624-48BF-A886-4C161D951C86}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {7F63BED3-3FC9-4127-81D4-15832F028522}
+	EndGlobalSection
+EndGlobal
