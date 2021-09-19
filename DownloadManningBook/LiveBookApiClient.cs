@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
@@ -9,16 +10,16 @@ using THttpWebRequest;
 
 namespace DownloadManningBook
 {
-    public class LiveBookApiClient:TWebRequest
+    public class LiveBookApiClient : TWebRequest
     {
 
         private readonly string _bookName;
-        private readonly int _meapVersion;
+        private readonly string _host;
 
-        public LiveBookApiClient(string bookName, int meapVersion)
+        public LiveBookApiClient(string bookName, string host)
         {
             _bookName = bookName;
-            _meapVersion = meapVersion;
+            _host = host;
         }
 
         public string GetChapterContentUrl(string chapterName)
@@ -29,12 +30,13 @@ namespace DownloadManningBook
             return JsonConvert.DeserializeObject<dynamic>(result)["bookElement"]["contentUrl"];
         }
 
-        public TocMeta GetTocAndIndex()
+        public List<Chapter> GetChapters()
         {
-            string url = $"https://dpzbhybb2pdcj.cloudfront.net/{_bookName}/v-{_meapVersion}/tocAndIndex.json";
+            string url = $"https://{_host}.cloudfront.net/{_bookName}/tocAndIndex.json";
+            //string url = $"https://drek4537l1klr.cloudfront.net/{_bookName}/v-{_meapVersion}/tocAndIndex.json";
             string result = Get(url);
             var json = JsonConvert.DeserializeObject<Data>(result);
-            return json.Toc.Parts[0];
+            return json.Toc.Parts.SelectMany(x=>x.Chapters).ToList();
         }
 
         public string Unlock(string chapter, int paragraph)
@@ -44,7 +46,7 @@ namespace DownloadManningBook
             var content = Post(url, new KeyValuePair<string, string>("bookShortName", _bookName),
                 new KeyValuePair<string, string>("bookElementShortName", chapter),
                 new KeyValuePair<string, string>("paragraphIDs", paragraph + ""),
-                new KeyValuePair<string, string>("meapVersion", _meapVersion + ""),
+                new KeyValuePair<string, string>("meapVersion", _host + ""),
                 new KeyValuePair<string, string>("isSearch", "false"),
                 new KeyValuePair<string, string>("isFreePreview", "true"),
                 new KeyValuePair<string, string>("logTimings", "false"),
@@ -53,7 +55,7 @@ namespace DownloadManningBook
                 new KeyValuePair<string, string>("platform", "browser-MacIntel"));
 
             var deserializeObject = JsonConvert.DeserializeObject<UnlockStage>(content);
-            if(deserializeObject.Success==false)
+            if (deserializeObject.Success == false)
                 throw new Exception($"It not preview any more {deserializeObject.Reason}");
             return deserializeObject.UnlockedParagraphs[0].Content;
         }

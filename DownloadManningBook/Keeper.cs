@@ -29,30 +29,24 @@ namespace DownloadManningBook
             _client = new LiveBookApiClient(meapVersion.Item1, meapVersion.Item2);
         }
 
-        private async Task<(string, int)> GetMeapVersion()
+        private async Task<(string, string)> GetMeapVersion()
         {
             var content = await _httpClient.GetStringAsync(_documentLink);
             var htmlDocument = new HtmlDocument();
             htmlDocument.LoadHtml(content);
-            var selectSingleNode = htmlDocument.DocumentNode.SelectSingleNode("//link[@rel='canonical']");
-            var value = selectSingleNode.Attributes["href"].Value;
 
-            var regex = new Regex("(?<key>[a-zA-Z]+)/Figures/cover.jpg");
+            var regex = new Regex("(?<host>[a-zA-Z0-9]+).cloudfront.net/(?<key>[a-zA-Z]+)/Figures/cover.jpg");
             var name = regex.Match(content).Groups["key"].Value;
-            return (name, int.Parse(value.Substring(value.Length - 1)));
-        }
-
-        private TocMeta GetTocAndIndex()
-        {
-            return _client.GetTocAndIndex();
+            var host = regex.Match(content).Groups["host"].Value;
+            return (name, host);
         }
 
         public async Task SaveEncrypted()
         {
-            TocMeta toc = GetTocAndIndex();
-            Console.WriteLine(toc.Chapters.Count);
+            var chapters = _client.GetChapters();
+            Console.WriteLine(chapters.Count);
 
-            foreach (var chapter in toc.Chapters)
+            foreach (var chapter in chapters)
             {
                 try
                 {
@@ -80,8 +74,7 @@ namespace DownloadManningBook
 
         public async Task Unlock()
         {
-            var tocAndIndex = _client.GetTocAndIndex();
-            foreach (var chapter in tocAndIndex.Chapters)
+            foreach (var chapter in _client.GetChapters())
             {
                 await Unlock(chapter);
             }
@@ -128,7 +121,7 @@ namespace DownloadManningBook
                     }
                     catch (Exception e)
                     {
-                        Console.WriteLine($"Cannot find element on paragram Id {paragraphId} with exception {e.Message}");   
+                        Console.WriteLine($"Cannot find element on paragram Id {paragraphId} with exception {e.Message}");
                     }
                 }
             }
