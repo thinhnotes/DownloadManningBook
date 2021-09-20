@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "DownloadManningBook": {
+      "commandName": "Project",
+      "commandLineArgs": "https://livebook.manning.com/book/kubernetes-in-action"
+    }
+  }
+}

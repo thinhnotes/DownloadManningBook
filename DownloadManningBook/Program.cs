@@ -7,7 +7,8 @@ namespace DownloadManningBook
     {
         static async Task Main(string[] args)
         {
-            var keeper = new Keeper("https://livebook.manning.com/book/kubernetes-in-action");
+            string bookName = args[0];
+            var keeper = new Keeper(bookName);
             await keeper.Init();
             await keeper.SaveEncrypted();
             await keeper.Unlock();
