@@ -15,7 +15,8 @@ namespace DownloadManningBook
         private readonly string _tempLocation = "chapters";
         private readonly string _saveLocation = "out";
         private readonly string _documentLink;
-        private readonly string _rootBookUrl = "https://dpzbhybb2pdcj.cloudfront.net";
+        private string _host;
+        private string _bookName;
 
         public Keeper(string url)
         {
@@ -25,20 +26,19 @@ namespace DownloadManningBook
 
         public async Task Init()
         {
-            var meapVersion = await GetMeapVersion();
-            _client = new LiveBookApiClient(meapVersion.Item1, meapVersion.Item2);
+            await GetMeapVersion();
+            _client = new LiveBookApiClient(_bookName, _host);
         }
 
-        private async Task<(string, string)> GetMeapVersion()
+        private async Task GetMeapVersion()
         {
             var content = await _httpClient.GetStringAsync(_documentLink);
             var htmlDocument = new HtmlDocument();
             htmlDocument.LoadHtml(content);
 
             var regex = new Regex("(?<host>[a-zA-Z0-9]+).cloudfront.net/(?<key>[a-zA-Z]+)/Figures/cover.jpg");
-            var name = regex.Match(content).Groups["key"].Value;
-            var host = regex.Match(content).Groups["host"].Value;
-            return (name, host);
+            _bookName = regex.Match(content).Groups["key"].Value;
+            _host = regex.Match(content).Groups["host"].Value;
         }
 
         public async Task SaveEncrypted()
@@ -50,7 +50,7 @@ namespace DownloadManningBook
             {
                 try
                 {
-                    var filename = $"{_tempLocation}/" + chapter.ShortName + ".html";
+                    var filename = $"{_tempLocation}/{_tempLocation}/" + chapter.ShortName + ".html";
                     if (File.Exists(filename)) continue;
 
                     var contentUrl = _client.GetChapterContentUrl(chapter.ShortName);
@@ -78,11 +78,17 @@ namespace DownloadManningBook
             {
                 await Unlock(chapter);
             }
+
+            //Parallel.ForEach(_client.GetChapters(), new ParallelOptions { MaxDegreeOfParallelism = 3 },
+            //async chapter =>
+            //{
+            //    await Unlock(chapter);
+            //});
         }
 
         private async Task Unlock(Chapter chapter)
         {
-            string contentPath = $"{_tempLocation}/{chapter.ShortName}.html";
+            string contentPath = $"{_bookName}/{_tempLocation}/{chapter.ShortName}.html";
             string chapterContent = await File.ReadAllTextAsync(contentPath);
 
             var htmlDocument = new HtmlDocument();
@@ -103,7 +109,7 @@ namespace DownloadManningBook
 
                     Console.Title = $"{chapter.ShortName} - {paragraphId} - {count}/ {htmlNodeCollection.Count}";
                     string paragraph;
-                    var outPath = $"{_tempLocation}/{chapter.ShortName}-{paragraphId}.html";
+                    var outPath = $"{_bookName}/{_tempLocation}/{chapter.ShortName}-{paragraphId}.html";
                     if (!File.Exists(outPath))
                     {
                         paragraph = _client.Unlock(chapter.ShortName, int.Parse(paragraphId));
@@ -126,12 +132,12 @@ namespace DownloadManningBook
                 }
             }
 
-            if (!Directory.Exists(_saveLocation))
+            if (!Directory.Exists($"{_bookName}/{_saveLocation}"))
             {
-                Directory.CreateDirectory(_saveLocation);
+                Directory.CreateDirectory($"{_bookName}/{_saveLocation}");
             }
 
-            await File.WriteAllTextAsync($"{this._saveLocation}/{chapter.ShortName}.html", htmlDocument.DocumentNode.OuterHtml.Replace("{{BOOK_ROOT_FOLDER}}", _rootBookUrl));
+            await File.WriteAllTextAsync($"{_bookName}/{this._saveLocation}/{chapter.ShortName}.html", htmlDocument.DocumentNode.OuterHtml.Replace("{{BOOK_ROOT_FOLDER}}", $"https://{_host}.cloudfront.net"));
         }
     }
 }

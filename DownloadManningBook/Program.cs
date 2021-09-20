@@ -11,7 +11,20 @@ namespace DownloadManningBook
             var keeper = new Keeper(bookName);
             await keeper.Init();
             await keeper.SaveEncrypted();
-            await keeper.Unlock();
+
+            BeginUnlock:
+            try
+            {
+                await keeper.Unlock();
+
+            }
+            catch (Exception ex)
+            {
+                if (!ex.Message.Contains("It not preview any more")) throw;
+                Console.WriteLine("Please change the IP and press any key to continute;");
+                Console.ReadKey();
+                goto BeginUnlock;
+            }
             Console.WriteLine("Download Completed!");
         }
     }
