@@ -9,7 +9,11 @@ namespace DownloadManningBook
         {
             string bookName = args[0];
             var keeper = new Keeper(bookName);
+
             await keeper.Init();
+
+            await keeper.FormatCalibre();
+
             await keeper.SaveEncrypted();
 
             BeginUnlock:
@@ -25,6 +29,9 @@ namespace DownloadManningBook
                 Console.ReadKey();
                 goto BeginUnlock;
             }
+
+            await keeper.FormatCalibre();
+
             Console.WriteLine("Download Completed!");
         }
     }

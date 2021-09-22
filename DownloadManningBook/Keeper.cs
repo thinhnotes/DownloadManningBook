@@ -139,5 +139,42 @@ namespace DownloadManningBook
 
             await File.WriteAllTextAsync($"{_bookName}/{this._saveLocation}/{chapter.ShortName}.html", htmlDocument.DocumentNode.OuterHtml.Replace("{{BOOK_ROOT_FOLDER}}", $"https://{_host}.cloudfront.net"));
         }
+
+        public async Task FormatCalibre()
+        {
+            System.Collections.Generic.List<Chapter> chapters = _client.GetChapters();
+            foreach (var chapter in chapters)
+            {
+                string file = $"{_bookName}/{this._saveLocation}/{chapter.ShortName}.html";
+                var fileContent = await File.ReadAllTextAsync(file);
+
+                //Replace Id can't start with the number
+                Regex regex = new Regex(" id=\"(\\d+)\"");
+                string result = regex.Replace(fileContent, $" id=\"{chapter.ShortName}$1\"");
+
+
+                foreach (var item in chapters)
+                {
+                    var regexChaperNumber = new Regex("\\d+");
+                    int chapterNumberInt = int.Parse(regexChaperNumber.Match(item.ShortName).Value);
+
+                    //Replace chapter link html
+                    string chaperUrl = $"/book/kubernetes-in-action/{item.ShortName}/ch{string.Format("{0:00}", chapterNumberInt)}\"";
+                    result = result.Replace(chaperUrl, $"chapter-{chapterNumberInt}.html\"");
+                }
+
+                //Replace image link html
+                Regex figureregex = new Regex($"/book/kubernetes-in-action/{chapter.ShortName}/([a-zA-Z0-9]+)");
+                result = figureregex.Replace(result, $"#$1");
+
+                //Replace wording link html
+                result = result.Replace("!@%STYLE%@!", string.Empty);
+                Regex cssregex = new Regex("{\"css\".+");
+                result = cssregex.Replace(result, string.Empty);
+
+                //Save file
+                await File.WriteAllTextAsync($"{_bookName}/{this._saveLocation}/{chapter.ShortName}.html", result);
+            }
+        }
     }
 }
