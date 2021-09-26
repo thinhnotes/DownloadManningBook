@@ -2,7 +2,7 @@
   "profiles": {
     "DownloadManningBook": {
       "commandName": "Project",
-      "commandLineArgs": "https://livebook.manning.com/book/kubernetes-in-action"
+      "commandLineArgs": "https://livebook.manning.com/book/the-programmers-brain/ 1 http://localhost:8118"
     }
   }
 }

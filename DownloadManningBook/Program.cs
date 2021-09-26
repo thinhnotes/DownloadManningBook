@@ -1,4 +1,9 @@
-﻿using System;
+﻿using RabbitMQ.Client;
+using RabbitMQ.Client.Events;
+using System;
+using System.IO;
+using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace DownloadManningBook
@@ -7,32 +12,41 @@ namespace DownloadManningBook
     {
         static async Task Main(string[] args)
         {
-            string bookName = args[0];
-            var keeper = new Keeper(bookName);
+            string bookUrl = args[0];
+            if (bookUrl == null)
+            {
+                throw new Exception("Please input the bookName");
+            }
 
-            await keeper.Init();
-
-            await keeper.FormatCalibre();
+            Console.WriteLine($"Init book with Url {bookUrl}");
+            string proxy = null;
+            if (args.Length == 3)
+            {
+                proxy = args[2];
+            }
+            var keeper = new Keeper(bookUrl, proxy);
 
             await keeper.SaveEncrypted();
 
-            BeginUnlock:
-            try
+            Console.WriteLine("Beign unlock to files");
+
+            int replicaData = int.Parse(args[1]);
+            await keeper.UnlockByShardingData(replicaData);
+
+            var isComplete = await keeper.CheckComplete();
+            if (isComplete)
             {
-                await keeper.Unlock();
+                Console.WriteLine("Beign FormatCalibre");
 
+                await keeper.FormatCalibre();
+
+                Console.WriteLine("Download Completed!");
             }
-            catch (Exception ex)
+            else
             {
-                if (!ex.Message.Contains("It not preview any more")) throw;
-                Console.WriteLine("Please change the IP and press any key to continute;");
-                Console.ReadKey();
-                goto BeginUnlock;
+                Console.WriteLine("Sharding Data for this done!");
             }
 
-            await keeper.FormatCalibre();
-
-            Console.WriteLine("Download Completed!");
         }
     }
 }

@@ -1,0 +1,26 @@
+version: '3'
+services:
+  manning-client:
+    build:
+        context: .
+    environment:
+      BOOK_URL: https://livebook.manning.com/book/kafka-in-action
+      REPLICA_COUNT: 12
+      PROXY: http://localhost:8118
+    volumes:
+      - ./data:/app/output/out
+      - data3:/app/output/chapters
+    deploy:
+      mode: replicated
+      replicas: 12
+    restart: on-failure
+    
+  # rabbitmq:
+    # image: rabbitmq:3-management-alpine
+    # container_name: 'rabbitmq'
+    # ports:
+        # - 5672:5672
+        # - 15672:15672
+      
+volumes:
+  data3:

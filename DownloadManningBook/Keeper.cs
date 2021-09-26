@@ -1,94 +1,131 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Net.Http;
+using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using DownloadManningBook.Model;
 using HtmlAgilityPack;
+using Newtonsoft.Json;
+using RabbitMQ.Client.Events;
 
 namespace DownloadManningBook
 {
     public class Keeper
     {
         private LiveBookApiClient _client;
-        private readonly HttpClient _httpClient;
+
+        private readonly RabbitmqHandler _rabbitmqHandler;
         private readonly string _tempLocation = "chapters";
         private readonly string _saveLocation = "out";
-        private readonly string _documentLink;
-        private string _host;
-        private string _bookName;
 
-        public Keeper(string url)
+
+        public Keeper(string url, string proxy = null)
         {
-            _documentLink = url;
-            _httpClient = new HttpClient();
-        }
-
-        public async Task Init()
-        {
-            await GetMeapVersion();
-            _client = new LiveBookApiClient(_bookName, _host);
-        }
-
-        private async Task GetMeapVersion()
-        {
-            var content = await _httpClient.GetStringAsync(_documentLink);
-            var htmlDocument = new HtmlDocument();
-            htmlDocument.LoadHtml(content);
-
-            var regex = new Regex("(?<host>[a-zA-Z0-9]+).cloudfront.net/(?<key>[a-zA-Z]+)/Figures/cover.jpg");
-            _bookName = regex.Match(content).Groups["key"].Value;
-            _host = regex.Match(content).Groups["host"].Value;
+            _client = new LiveBookApiClient(url, proxy);
+            //use for queue
+            //_rabbitmqHandler = new RabbitmqHandler("localhost", "processing");
+            //_rabbitmqHandler.Consumer(_client);
         }
 
         public async Task SaveEncrypted()
         {
             var chapters = _client.GetChapters();
-            Console.WriteLine(chapters.Count);
+            Console.WriteLine($"This book has {chapters.Count} Chapters");
 
             foreach (var chapter in chapters)
             {
-                try
-                {
-                    var filename = $"{_tempLocation}/{_tempLocation}/" + chapter.ShortName + ".html";
-                    if (File.Exists(filename)) continue;
-
-                    var contentUrl = _client.GetChapterContentUrl(chapter.ShortName);
-                    Console.WriteLine(chapter.ShortName + " " + contentUrl);
-
-                    string content = await _httpClient.GetStringAsync(contentUrl);
-
-                    if (!Directory.Exists(_tempLocation))
-                    {
-                        Directory.CreateDirectory(_tempLocation);
-                    }
-                    await File.WriteAllTextAsync(filename, content);
-                }
-                catch (Exception e)
-                {
-                    Console.WriteLine(e);
-                }
+                var filename = $"{_tempLocation}/" + chapter.ShortName + ".html";
+                if (File.Exists(filename)) continue;
+                string content = _client.GetChapter(chapter.ShortName);
+                await SaveFileAsync(filename, content);
             }
             Console.WriteLine("Saved content to files");
         }
 
-        public async Task Unlock()
+        async Task SaveFileAsync(string filePath, string content)
         {
-            foreach (var chapter in _client.GetChapters())
+            var directoryPath = Path.GetDirectoryName(filePath);
+            if (!Directory.Exists(directoryPath))
             {
-                await Unlock(chapter);
+                Directory.CreateDirectory(directoryPath);
             }
-
-            //Parallel.ForEach(_client.GetChapters(), new ParallelOptions { MaxDegreeOfParallelism = 3 },
-            //async chapter =>
-            //{
-            //    await Unlock(chapter);
-            //});
+            await File.WriteAllTextAsync(filePath, content);
         }
 
-        private async Task Unlock(Chapter chapter)
+        //public async Task Unlock()
+        //{
+        //    var chapters = _client.GetChapters().ToArray();
+        //    foreach (var chapter in chapters)
+        //    {
+        //        await UnlockChapter(chapter);
+        //    }
+        //}
+
+        public async Task UnlockByShardingData(int nunberCost)
         {
-            string contentPath = $"{_bookName}/{_tempLocation}/{chapter.ShortName}.html";
+            Console.WriteLine($"Number of sharding {nunberCost}");
+
+            string _fileLine = "out/machine.txt";
+            if (!Directory.Exists("out"))
+                Directory.CreateDirectory("out");
+            File.AppendAllText($"out/machine.txt", Environment.MachineName + Environment.NewLine);
+
+            var machines = File.ReadAllLines(_fileLine);
+
+            var machineIndex = Array.FindIndex(machines, w => w == Environment.MachineName) % nunberCost;
+
+            var chapers = _client.GetChapters().ToArray();
+            for (int i = machineIndex; i < chapers.Length; i = i + nunberCost)
+            {
+                Console.WriteLine($"Chapter index on {i}");
+                await UnlockChapter(chapers[i], HandleUnlock);
+            }
+        }
+
+        public async Task<bool> CheckComplete() 
+        {
+            var chapers = _client.GetChapters().ToArray();
+            foreach (var chapter in chapers)
+            {
+                if(!await UnlockChapter(chapter, HandleChecking))
+                    return false;
+            }
+            return true;
+        }
+
+        public async Task<string> HandleChecking(string shortName, string paragraphId, string outPath)
+        {
+            return null;
+        }
+
+        public async Task<string> HandleUnlock(string shortName, string paragraphId, string outPath)
+        {
+            Console.WriteLine($"{Environment.MachineName} - {shortName} - {paragraphId} ");
+            //use message queue
+            if (_rabbitmqHandler != null)
+            {
+                var message = JsonConvert.SerializeObject(new QueueMessage
+                {
+                    ShortName = shortName,
+                    ParagraphId = int.Parse(paragraphId),
+                    OutputPath = outPath
+                });
+                _rabbitmqHandler.Publish(message);
+            }
+
+            //use the single thread
+            var paragraph = _client.Unlock(shortName, int.Parse(paragraphId));
+            await SaveFileAsync(outPath, paragraph);
+            return paragraph;
+        }
+
+
+
+        private async Task<bool> UnlockChapter(Chapter chapter, Func<string, string, string, Task<string>> func)
+        {
+            string contentPath = $"{_tempLocation}/{chapter.ShortName}.html";
             string chapterContent = await File.ReadAllTextAsync(contentPath);
 
             var htmlDocument = new HtmlDocument();
@@ -104,16 +141,18 @@ namespace DownloadManningBook
                     if (string.IsNullOrWhiteSpace(paragraphId))
                     {
                         Console.WriteLine("Not found the paragraph Id ");
-                        return;
+                        return false;
                     }
-
-                    Console.Title = $"{chapter.ShortName} - {paragraphId} - {count}/ {htmlNodeCollection.Count}";
                     string paragraph;
-                    var outPath = $"{_bookName}/{_tempLocation}/{chapter.ShortName}-{paragraphId}.html";
+                    var outPath = $"{_tempLocation}/{chapter.ShortName}-{paragraphId}.html";
+
                     if (!File.Exists(outPath))
                     {
-                        paragraph = _client.Unlock(chapter.ShortName, int.Parse(paragraphId));
-                        await File.WriteAllTextAsync(outPath, paragraph);
+                        paragraph = await func(chapter.ShortName, paragraphId, outPath);
+                        if (paragraph == null)
+                        {
+                            return false;
+                        }
                     }
                     else
                     {
@@ -131,13 +170,13 @@ namespace DownloadManningBook
                     }
                 }
             }
+            await SaveFile(chapter, htmlDocument.DocumentNode.InnerHtml);
+            return true;
+        }
 
-            if (!Directory.Exists($"{_bookName}/{_saveLocation}"))
-            {
-                Directory.CreateDirectory($"{_bookName}/{_saveLocation}");
-            }
-
-            await File.WriteAllTextAsync($"{_bookName}/{this._saveLocation}/{chapter.ShortName}.html", htmlDocument.DocumentNode.OuterHtml.Replace("{{BOOK_ROOT_FOLDER}}", $"https://{_host}.cloudfront.net"));
+        private async Task SaveFile(Chapter chapter, string html)
+        {
+            await SaveFileAsync($"{this._saveLocation}/{chapter.ShortName}.html", html.Replace("{{BOOK_ROOT_FOLDER}}", $"https://{_client.Host}.cloudfront.net"));
         }
 
         public async Task FormatCalibre()
@@ -145,7 +184,7 @@ namespace DownloadManningBook
             System.Collections.Generic.List<Chapter> chapters = _client.GetChapters();
             foreach (var chapter in chapters)
             {
-                string file = $"{_bookName}/{this._saveLocation}/{chapter.ShortName}.html";
+                string file = $"{this._saveLocation}/{chapter.ShortName}.html";
                 var fileContent = await File.ReadAllTextAsync(file);
 
                 //Replace Id can't start with the number
@@ -173,7 +212,7 @@ namespace DownloadManningBook
                 result = cssregex.Replace(result, string.Empty);
 
                 //Save file
-                await File.WriteAllTextAsync($"{_bookName}/{this._saveLocation}/{chapter.ShortName}.html", result);
+                await SaveFileAsync($"{this._saveLocation}/{chapter.ShortName}.html", result);
             }
         }
     }

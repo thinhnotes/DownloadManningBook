@@ -17,9 +17,29 @@ namespace THttpWebRequest
     public class TWebRequest
     {
         private string _userAgent;
+        protected CookieCollection CookieCollection { get; set; }
+        protected WebHeaderCollection WebHeaderCollection { get; set; }
+        protected bool AutoRedirect { get; set; }
+        protected string Location { get; set; }
+        protected string Referer { get; set; }
 
-        protected TWebRequest()
+        protected RequestType RequestType { get; set; }
+
+        protected string UserAgent
         {
+            get =>
+                _userAgent ??
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.163 Safari/537.36";
+            set => _userAgent = value;
+        }
+
+        protected bool Gzip { get; set; }
+        private Uri Uri { get; set; }
+        public IWebProxy Proxy;
+
+        protected TWebRequest(IWebProxy proxy = null)
+        {
+            Proxy = proxy;
             CookieCollection = new CookieCollection();
             WebHeaderCollection = new WebHeaderCollection();
         }
@@ -50,25 +70,6 @@ namespace THttpWebRequest
             }
             CookieCollection = cookieCollection;
         }
-
-        protected CookieCollection CookieCollection { get; set; }
-        protected WebHeaderCollection WebHeaderCollection { get; set; }
-        protected bool AutoRedirect { get; set; }
-        protected string Location { get; set; }
-        protected string Referer { get; set; }
-
-        protected RequestType RequestType { get; set; }
-
-        protected string UserAgent
-        {
-            get =>
-                _userAgent ??
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.163 Safari/537.36";
-            set => _userAgent = value;
-        }
-
-        protected bool Gzip { get; set; }
-        private Uri Uri { get; set; }
 
         private HttpWebResponse GetResponse(string url, string postData = null, string method = "GET")
         {
@@ -101,7 +102,7 @@ namespace THttpWebRequest
             }
             catch (WebException ex)
             {
-                if (((HttpWebResponse) ex.Response).StatusCode == HttpStatusCode.Found )
+                if (((HttpWebResponse)ex.Response).StatusCode == HttpStatusCode.Found)
                 {
                     response = (HttpWebResponse)ex.Response;
 
@@ -114,7 +115,7 @@ namespace THttpWebRequest
                         Console.WriteLine(reader.ReadToEnd());
                     }
 
-                    if ((int) ex.Status != 7)
+                    if ((int)ex.Status != 7)
                     {
                         throw;
                     }
@@ -180,6 +181,10 @@ namespace THttpWebRequest
             if (RequestType == RequestType.Json)
             {
                 request.Headers.Add("X-Requested-With", "XMLHttpRequest");
+            }
+            if(Proxy != null)
+            {
+                request.Proxy = Proxy;
             }
             return request;
         }
