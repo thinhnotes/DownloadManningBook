@@ -3,24 +3,47 @@ services:
   manning-client:
     build:
         context: .
+        dockerfile: DownloadManningBook/Dockerfile
     environment:
-      BOOK_URL: https://livebook.manning.com/book/kafka-in-action
-      REPLICA_COUNT: 12
-      PROXY: http://localhost:8118
+      BOOK_URL: https://livebook.manning.com/book/cloud-native-patterns
+      RABBITMQ_URL: rabbitmq
     volumes:
       - ./data:/app/output/out
-      - data3:/app/output/chapters
+      - data8:/app/output/chapters
+    depends_on:
+      rabbitmq:
+        condition: service_healthy    
+
+  consumer:
+    build:
+        context: .
+        dockerfile: ConsumerUnlockProcess/Dockerfile
+    environment:
+      BOOK_URL: https://livebook.manning.com/book/cloud-native-patterns
+      RABBITMQ_URL: rabbitmq
+    volumes:
+      - data8:/app/output/chapters
     deploy:
       mode: replicated
-      replicas: 12
+      replicas: 0
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
     restart: on-failure
     
-  # rabbitmq:
-    # image: rabbitmq:3-management-alpine
-    # container_name: 'rabbitmq'
-    # ports:
-        # - 5672:5672
-        # - 15672:15672
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: 'rabbitmq'
+    ports:
+        - 5672:5672
+        - 15672:15672
+    healthcheck:
+        test: ["CMD", "wget", "http://localhost:15672"]
+        interval: 30s
+        timeout: 10s
+        retries: 10
+    logging:
+      driver: none
       
 volumes:
-  data3:
+  data8:

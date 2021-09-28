@@ -1,8 +1,7 @@
 {
   "profiles": {
-    "DownloadManningBook": {
+    "ConsumerUnlockProcess": {
       "commandName": "Project",
-      "commandLineArgs": "https://livebook.manning.com/book/the-programmers-brain/",
       "environmentVariables": {
         "BOOK_URL": "https://livebook.manning.com/book/the-programmers-brain/",
         "RABBITMQ_URL": "localhost"

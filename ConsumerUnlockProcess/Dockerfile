@@ -1,4 +1,4 @@
-FROM dperson/torproxy
+FROM dperson/torproxy as base
 ARG BookUrl
 
 USER root
@@ -14,22 +14,30 @@ RUN chmod +x dotnet-install.sh
 RUN ./dotnet-install.sh -c 3.1 --install-dir /usr/share/dotnet
 RUN ./dotnet-install.sh -c 5.0 --install-dir /usr/share/dotnet
 
-WORKDIR /app
-COPY DownloadManningBook/DownloadManningBook.csproj ./DownloadManningBook/DownloadManningBook.csproj
-COPY THttpWebRequest/THttpWebRequest.csproj ./THttpWebRequest/THttpWebRequest.csproj
-COPY DownloadManningBook.sln ./DownloadManningBook.sln
-RUN dotnet restore 
+FROM mcr.microsoft.com/dotnet/sdk:5.0 AS build
+WORKDIR /src
+COPY ["ConsumerUnlockProcess/ConsumerUnlockProcess.csproj", "ConsumerUnlockProcess/"]
+COPY ["THttpWebRequest/THttpWebRequest.csproj", "THttpWebRequest/"]
+RUN dotnet restore "ConsumerUnlockProcess/ConsumerUnlockProcess.csproj"
 
+COPY ConsumerUnlockProcess ./ConsumerUnlockProcess
 COPY DownloadManningBook ./DownloadManningBook
 COPY THttpWebRequest ./THttpWebRequest
-RUN dotnet build -o output
 
+WORKDIR "/src/ConsumerUnlockProcess"
+RUN dotnet build "ConsumerUnlockProcess.csproj" -c Release -o /app/build
+
+FROM build AS publish
+RUN dotnet build "ConsumerUnlockProcess.csproj" -c Release -o /app/publish
+
+FROM base AS final
 WORKDIR /app/output
-
+COPY --from=publish /app/publish .
+RUN dotnet --version
 COPY run.sh ./run.sh
 RUN chmod 0755 run.sh
 
+#for remote deubug c
 RUN apk add --no-cache openssh-server unzip curl
 
 ENTRYPOINT ["/sbin/tini", "--", "/app/output/run.sh"]
-
