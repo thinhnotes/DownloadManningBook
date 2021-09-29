@@ -32,4 +32,3 @@ RUN chmod 0755 run.sh
 RUN apk add --no-cache openssh-server unzip curl
 
 ENTRYPOINT ["/sbin/tini", "--", "/app/output/run.sh"]
-

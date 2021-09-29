@@ -2,7 +2,11 @@
   "profiles": {
     "DownloadManningBook": {
       "commandName": "Project",
-      "commandLineArgs": "https://livebook.manning.com/book/the-programmers-brain/ 1 http://localhost:8118"
+      "environmentVariables": {
+        "BOOK_URL": "https://livebook.manning.com/book/cloud-native-patterns",
+        "REPLICA_COUNT": "1",
+        "PROXY": ""
+      }
     }
   }
 }

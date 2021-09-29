@@ -12,25 +12,29 @@ namespace DownloadManningBook
     {
         static async Task Main(string[] args)
         {
-            string bookUrl = args[0];
+
+            string bookUrl = Environment.GetEnvironmentVariable("BOOK_URL");
+            int.TryParse(Environment.GetEnvironmentVariable("REPLICA_COUNT"), out int replicaData);
+
             if (bookUrl == null)
             {
                 throw new Exception("Please input the bookName");
             }
 
-            Console.WriteLine($"Init book with Url {bookUrl}");
-            string proxy = null;
-            if (args.Length == 3)
+            if (replicaData < 1)
             {
-                proxy = args[2];
+                throw new Exception("Please input the REPLICA_COUNT");
             }
+
+            Console.WriteLine($"Init book with Url {bookUrl}");
+            string proxy = Environment.GetEnvironmentVariable("PROXY");
+
             var keeper = new Keeper(bookUrl, proxy);
 
             await keeper.SaveEncrypted();
 
             Console.WriteLine("Beign unlock to files");
 
-            int replicaData = int.Parse(args[1]);
             await keeper.UnlockByShardingData(replicaData);
 
             var isComplete = await keeper.CheckComplete();

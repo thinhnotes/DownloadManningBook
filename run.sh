@@ -5,5 +5,5 @@ if [[ -z "${BOOK_URL}" ]]; then
 elif [[ -z "${REPLICA_COUNT}" ]]; then
 	echo "Please input the BOOK_URL"
 else
-	bash /usr/bin/torproxy.sh & sleep 15 && dotnet /app/output/DownloadManningBook.dll $BOOK_URL $REPLICA_COUNT $PROXY
+	bash /usr/bin/torproxy.sh & while ! curl --proxy http://localhost:8118 --output /dev/null --silent --head --fail http://google.com ; do sleep 1 ; done && dotnet /app/output/DownloadManningBook.dll
 fi

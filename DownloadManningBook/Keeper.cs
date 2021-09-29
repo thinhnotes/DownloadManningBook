@@ -77,19 +77,19 @@ namespace DownloadManningBook
             var machineIndex = Array.FindIndex(machines, w => w == Environment.MachineName) % nunberCost;
 
             var chapers = _client.GetChapters().ToArray();
-            for (int i = machineIndex; i < chapers.Length; i = i + nunberCost)
+            for (int i = machineIndex + 1; i <= chapers.Length; i = i + nunberCost)
             {
                 Console.WriteLine($"Chapter index on {i}");
                 await UnlockChapter(chapers[i], HandleUnlock);
             }
         }
 
-        public async Task<bool> CheckComplete() 
+        public async Task<bool> CheckComplete()
         {
             var chapers = _client.GetChapters().ToArray();
             foreach (var chapter in chapers)
             {
-                if(!await UnlockChapter(chapter, HandleChecking))
+                if (!await UnlockChapter(chapter, HandleChecking))
                     return false;
             }
             return true;
