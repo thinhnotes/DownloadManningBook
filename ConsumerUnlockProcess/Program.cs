@@ -32,7 +32,6 @@ namespace ConsumerUnlockProcess
             {
                 proxy = args[0];
             }
-            var client = new LiveBookApiClient(bookUrl, proxy);
 
             string queueName = "processing";
             var factory = new ConnectionFactory() { HostName = rabbitmqUrl };
@@ -60,6 +59,7 @@ namespace ConsumerUnlockProcess
                     }
                     try
                     {
+                        var client = new LiveBookApiClient(bookUrl, proxy);
                         var paragraph = client.Unlock(messg.ShortName, messg.ParagraphId);
                         Console.WriteLine($"Processing Consumer {messg.ShortName} -- {messg.ParagraphId} -- {count}");
                         SaveFileAsync(messg.OutputPath, paragraph);
@@ -69,7 +69,7 @@ namespace ConsumerUnlockProcess
                     catch (Exception ex)
                     {
                         Console.WriteLine($"Error {ex}");
-                        channel.BasicNack(ea.DeliveryTag, false, true);
+                        channel.BasicReject(ea.DeliveryTag, true);
                         Environment.Exit(1);
                     }
                 };

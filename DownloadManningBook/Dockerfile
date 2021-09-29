@@ -22,4 +22,6 @@ FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
 
+RUN apt-get update && apt-get install -y openssh-server unzip curl
+
 ENTRYPOINT ["dotnet", "DownloadManningBook.dll"]

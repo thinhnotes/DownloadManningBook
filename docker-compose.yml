@@ -25,7 +25,7 @@ services:
       - data8:/app/output/chapters
     deploy:
       mode: replicated
-      replicas: 0
+      replicas: 3
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -38,12 +38,10 @@ services:
         - 5672:5672
         - 15672:15672
     healthcheck:
-        test: ["CMD", "wget", "http://localhost:15672"]
-        interval: 30s
-        timeout: 10s
-        retries: 10
-    logging:
-      driver: none
+      test: rabbitmq-diagnostics -q ping
+      interval: 30s
+      timeout: 30s
+      retries: 3
       
 volumes:
   data8:
