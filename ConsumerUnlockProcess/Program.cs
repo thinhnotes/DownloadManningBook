@@ -12,6 +12,8 @@ namespace ConsumerUnlockProcess
     {
         private static readonly string rabbitmqUrl = Environment.GetEnvironmentVariable("RABBITMQ_URL");
         private static readonly string bookUrl = Environment.GetEnvironmentVariable("BOOK_URL");
+        private static string proxy;
+        private static IModel channel;
 
         static void Main(string[] args)
         {
@@ -27,7 +29,6 @@ namespace ConsumerUnlockProcess
             Console.WriteLine($"Init rabbitmqUrl {rabbitmqUrl} ");
 
             Console.WriteLine($"Init book with Url {bookUrl}");
-            string proxy = null;
             if (args.Length == 1)
             {
                 proxy = args[0];
@@ -36,7 +37,7 @@ namespace ConsumerUnlockProcess
             string queueName = "processing";
             var factory = new ConnectionFactory() { HostName = rabbitmqUrl };
             using (var connection = factory.CreateConnection())
-            using (var channel = connection.CreateModel())
+            using (channel = connection.CreateModel())
             {
                 channel.QueueDeclare(queue: queueName,
                                      durable: false,
@@ -46,33 +47,7 @@ namespace ConsumerUnlockProcess
 
                 var count = 0;
                 var consumer = new EventingBasicConsumer(channel);
-                consumer.Received += (model, ea) =>
-                {
-                    var body = ea.Body.ToArray();
-                    var message = Encoding.UTF8.GetString(body);
-                    var messg = JsonConvert.DeserializeObject<QueueMessage>(message);
-                    if (File.Exists(messg.OutputPath))
-                    {
-                        channel.BasicAck(ea.DeliveryTag, false);
-                        count++;
-                        return;
-                    }
-                    try
-                    {
-                        var client = new LiveBookApiClient(bookUrl, proxy);
-                        var paragraph = client.Unlock(messg.ShortName, messg.ParagraphId);
-                        Console.WriteLine($"Processing Consumer {messg.ShortName} -- {messg.ParagraphId} -- {count}");
-                        SaveFileAsync(messg.OutputPath, paragraph);
-                        channel.BasicAck(ea.DeliveryTag, false);
-                        count++;
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Error {ex}");
-                        channel.BasicReject(ea.DeliveryTag, true);
-                        Environment.Exit(1);
-                    }
-                };
+                consumer.Received += Consumer_Received;
                 channel.BasicConsume(queue: queueName,
                                      autoAck: false,
                                      consumer: consumer);
@@ -82,6 +57,34 @@ namespace ConsumerUnlockProcess
                 {
 
                 }
+            }
+        }
+
+        private static void Consumer_Received(object m, BasicDeliverEventArgs ea)
+        {
+            var body = ea.Body.ToArray();
+            var message = Encoding.UTF8.GetString(body);
+            var messg = JsonConvert.DeserializeObject<QueueMessage>(message);
+            Console.WriteLine($"Receive the message queue {ea.DeliveryTag} {File.Exists(messg.OutputPath)} {messg.OutputPath}");
+            if (File.Exists(messg.OutputPath))
+            {
+                channel.BasicAck(ea.DeliveryTag, false);
+                Console.WriteLine($"Ready Consumer {messg.ShortName} -- {messg.ParagraphId}");
+                return;
+            }
+            try
+            {
+                var client = new LiveBookApiClient(bookUrl, proxy);
+                var paragraph = client.Unlock(messg.ShortName, messg.ParagraphId);
+                Console.WriteLine($"Processing Consumer {messg.ShortName} -- {messg.ParagraphId}");
+                SaveFileAsync(messg.OutputPath, paragraph);
+                channel.BasicAck(ea.DeliveryTag, false);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error {ex}");
+                channel.BasicReject(ea.DeliveryTag, true);
+                Environment.Exit(1);
             }
         }
 

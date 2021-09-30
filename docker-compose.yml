@@ -8,8 +8,8 @@ services:
       BOOK_URL: https://livebook.manning.com/book/cloud-native-patterns
       RABBITMQ_URL: rabbitmq
     volumes:
-      - ./data:/app/output/out
-      - data8:/app/output/chapters
+      - ./data:/app/out
+      - data01:/app/chapters
     depends_on:
       rabbitmq:
         condition: service_healthy    
@@ -22,10 +22,10 @@ services:
       BOOK_URL: https://livebook.manning.com/book/cloud-native-patterns
       RABBITMQ_URL: rabbitmq
     volumes:
-      - data8:/app/output/chapters
+      - data01:/app/chapters
     deploy:
       mode: replicated
-      replicas: 3
+      replicas: 2
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -44,4 +44,4 @@ services:
       retries: 3
       
 volumes:
-  data8:
+  data01:

@@ -23,11 +23,12 @@ namespace DownloadManningBook
             await keeper.Unlock();
 
             bool isComplete;
+            Thread.Sleep(120000);
             do
             {
                 Console.WriteLine("Waiting for consumer unlock");
-                Thread.Sleep(10000);
                 isComplete = await keeper.CheckComplete();
+                Thread.Sleep(10000);
             } while (!isComplete);
 
 

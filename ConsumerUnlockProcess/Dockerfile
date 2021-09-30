@@ -31,7 +31,7 @@ FROM build AS publish
 RUN dotnet build "ConsumerUnlockProcess.csproj" -c Release -o /app/publish
 
 FROM base AS final
-WORKDIR /app/output
+WORKDIR /app
 COPY --from=publish /app/publish .
 RUN dotnet --version
 COPY run.sh ./run.sh
@@ -40,4 +40,4 @@ RUN chmod 0755 run.sh
 #for remote deubug c
 RUN apk add --no-cache openssh-server unzip curl
 
-ENTRYPOINT ["/sbin/tini", "--", "/app/output/run.sh"]
+ENTRYPOINT ["/sbin/tini", "--", "/app/run.sh"]
