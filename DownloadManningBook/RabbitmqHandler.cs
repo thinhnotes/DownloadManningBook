@@ -42,7 +42,7 @@ namespace DownloadManningBook
             {
                 var count = 0;
                 var consumer = new EventingBasicConsumer(channel);
-                consumer.Received += (model, ea) =>
+                consumer.Received += async (model, ea) =>
                 {
                     count++;
                     var body = ea.Body.ToArray();
@@ -55,7 +55,7 @@ namespace DownloadManningBook
                     }
                     try
                     {
-                        var paragraph = client.Unlock(messg.ShortName, messg.ParagraphId);
+                        var paragraph = await client.Unlock(messg.ShortName, messg.ParagraphId);
                         Console.WriteLine($"Processing Consumer {messg.ShortName} -- {messg.ParagraphId} -- {count}");
                         SaveFileAsync(messg.OutputPath, paragraph);
                     }

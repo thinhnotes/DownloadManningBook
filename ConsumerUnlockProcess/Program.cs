@@ -60,7 +60,7 @@ namespace ConsumerUnlockProcess
             }
         }
 
-        private static void Consumer_Received(object m, BasicDeliverEventArgs ea)
+        private static async void Consumer_Received(object m, BasicDeliverEventArgs ea)
         {
             var body = ea.Body.ToArray();
             var message = Encoding.UTF8.GetString(body);
@@ -75,7 +75,7 @@ namespace ConsumerUnlockProcess
             try
             {
                 var client = new LiveBookApiClient(bookUrl, proxy);
-                var paragraph = client.Unlock(messg.ShortName, messg.ParagraphId);
+                var paragraph = await client.Unlock(messg.ShortName, messg.ParagraphId);
                 Console.WriteLine($"Processing Consumer {messg.ShortName} -- {messg.ParagraphId}");
                 SaveFileAsync(messg.OutputPath, paragraph);
                 channel.BasicAck(ea.DeliveryTag, false);

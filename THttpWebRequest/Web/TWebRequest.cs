@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
+using System.Threading.Tasks;
 using THttpWebRequest.Utility;
 
 namespace THttpWebRequest
@@ -71,7 +72,7 @@ namespace THttpWebRequest
             CookieCollection = cookieCollection;
         }
 
-        private HttpWebResponse GetResponse(string url, string postData = null, string method = "GET")
+        private async Task<HttpWebResponse> GetResponseAsync(string url, string postData = null, string method = "GET")
         {
             Uri = new Uri(url);
             HttpWebRequest request = InitRequest();
@@ -90,18 +91,22 @@ namespace THttpWebRequest
                 else
                     request.ContentLength = 0;
             }
-            return (HttpWebResponse)request.GetResponse();
+            return (await request.GetResponseAsync() as HttpWebResponse);
         }
-
-        private Stream GetStream(string url, string postData = null, string method = "GET")
+        
+        private async Task<Stream> GetStreamAsync(string url, string postData = null, string method = "GET")
         {
-            HttpWebResponse response = null;
+            HttpWebResponse response;
             try
             {
-                response = GetResponse(url, postData, method);
+                response = await GetResponseAsync(url, postData, method);
             }
             catch (WebException ex)
             {
+                if(ex == null)
+                {
+                    throw;
+                }
                 if (((HttpWebResponse)ex.Response).StatusCode == HttpStatusCode.Found)
                 {
                     response = (HttpWebResponse)ex.Response;
@@ -139,9 +144,9 @@ namespace THttpWebRequest
             return responseStream;
         }
 
-        private string GetContent(string url, string postData = null, string method = "GET")
+        private async Task<string> GetContent(string url, string postData = null, string method = "GET")
         {
-            using (Stream stream = GetStream(url, postData, method))
+            using (Stream stream = await GetStreamAsync(url, postData, method))
             {
                 using (var sr = new StreamReader(stream))
                 {
@@ -150,23 +155,23 @@ namespace THttpWebRequest
             }
         }
 
-        protected string Get(string url, bool autoRedirect = false)
+        protected async Task<string> Get(string url, bool autoRedirect = false)
         {
             AutoRedirect = autoRedirect;
-            return GetContent(url);
+            return await GetContent(url);
         }
 
-        protected string Post(string url, string data, RequestType requestType = RequestType.Normal, bool autoRedirect = false)
+        protected async Task<string> Post(string url, string data, RequestType requestType = RequestType.Normal, bool autoRedirect = false)
         {
             AutoRedirect = autoRedirect;
             RequestType = requestType;
-            return GetContent(url, data, "POST");
+            return await GetContent(url, data, "POST");
         }
 
-        public string Post(string url, params KeyValuePair<string, string>[] data)
+        public async Task<string> Post(string url, params KeyValuePair<string, string>[] data)
         {
             string dataOutput = data.Aggregate("", (current, keyValuePair) => current + $"{keyValuePair.Key}={keyValuePair.Value}&");
-            return Post(url, dataOutput);
+            return await Post(url, dataOutput);
         }
 
         private HttpWebRequest InitRequest()

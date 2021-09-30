@@ -28,14 +28,14 @@ namespace DownloadManningBook
 
         public async Task SaveEncrypted()
         {
-            var chapters = _client.GetChapters();
+            var chapters = await _client.GetChapters();
             Console.WriteLine($"This book has {chapters.Count} Chapters");
 
             foreach (var chapter in chapters)
             {
                 var filename = $"{_tempLocation}/" + chapter.ShortName + ".html";
                 if (File.Exists(filename)) continue;
-                string content = _client.GetChapter(chapter.ShortName);
+                string content = await _client.GetChapter(chapter.ShortName);
                 await SaveFileAsync(filename, content);
             }
             Console.WriteLine("Saved content to files");
@@ -53,7 +53,7 @@ namespace DownloadManningBook
 
         public async Task Unlock()
         {
-            var chapters = _client.GetChapters().ToArray();
+            var chapters = await _client.GetChapters();
             foreach (var chapter in chapters)
             {
                 await UnlockChapter(chapter, HandleUnlock);
@@ -64,7 +64,7 @@ namespace DownloadManningBook
 
         public async Task<bool> CheckComplete()
         {
-            var chapers = _client.GetChapters().ToArray();
+            var chapers = await _client.GetChapters();
             foreach (var chapter in chapers)
             {
                 if (!await UnlockChapter(chapter, null))
@@ -142,7 +142,7 @@ namespace DownloadManningBook
 
         public async Task FormatCalibre()
         {
-            System.Collections.Generic.List<Chapter> chapters = _client.GetChapters();
+            System.Collections.Generic.List<Chapter> chapters = await _client.GetChapters();
             foreach (var chapter in chapters)
             {
                 string file = $"{this._saveLocation}/{chapter.ShortName}.html";
